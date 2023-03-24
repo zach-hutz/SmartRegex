@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>SmartRegex Pro - AI-powered Regex Tool</title>
+    <link rel="icon" href="static/SmartRegex_logo_small.png" />
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.4/purify.min.js"></script>
+
+    <script>
+      $(document).ready(function () {
+        function sanitizeInput(input) {
+          return DOMPurify.sanitize(input);
+        }
+
+        let prev_regex = localStorage.getItem("smart_regex_query");
+        if (prev_regex != null && prev_regex != "") {
+          $("#generated_regex").text(prev_regex);
+          $("#generated_regex_container").fadeIn();
+        }
+        $("#regex_form").submit(function (event) {
+          event.preventDefault();
+          const dirtyText = $("#input_text").val();
+          const inputText = sanitizeInput(dirtyText);
+
+          const dirtyExplanation = $("#explanation").val();
+          const explanation = sanitizeInput(dirtyExplanation);
+
+          // const dirtyModel = $("#model").val();
+          //alert(dirtyModel);
+          //const model = sanitizeInput(dirtyModel);
+
+          $.ajax({
+            type: "POST",
+            url: "/generate_regex_pro",
+            data: {
+              input_text: inputText,
+              explanation: explanation,
+              model: $("#model").val(),
+            },
+            success: function (response) {
+              if (response.error) {
+                Swal.fire({
+                  title: "Error!",
+                  text: response.error,
+                  icon: "error",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+                return;
+              }
+              const regex = response.regex;
+              $("#generated_regex").text(regex);
+              $("#generated_regex_container").fadeIn();
+              localStorage.setItem("smart_regex_query", regex);
+            },
+            error: function (error) {
+              Swal.fire({
+                title: "Error!",
+                text: "Something went wrong. Please try again later.",
+                icon: "error",
+                confirmButtonText: "OK",
+                theme: "dark",
+              });
+            },
+          });
+        });
+      });
+    </script>
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #212529;
+        color: #f8f9fa;
+      }
+      #generated_regex_container {
+        display: none;
+        border: 1px solid #495057;
+        border-radius: 0.25rem;
+        background-color: #343a40;
+        color: #f8f9fa;
+        padding: 1rem;
+        margin-top: 25px;
+      }
+      #generated_regex {
+        color: #f8f9fa;
+      }
+      h1,
+      h3,
+      h5 {
+        margin-bottom: 1.5rem;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        background-color: #343a40;
+        border-radius: 0.5rem;
+      }
+      button.btn {
+        cursor: pointer;
+        background-color: #28a745;
+        border-color: #28a745;
+        transition: background-color 0.3s ease, border-color 0.3s ease,
+          color 0.3s ease;
+      }
+
+      button.btn:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+        color: #fff;
+      }
+
+      .logo {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+      }
+
+      #regex_form {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      input.form-control,
+      textarea.form-control {
+        background-color: #495057;
+        border-color: #495057;
+        color: #fff;
+      }
+
+      input.form-control:focus,
+      textarea.form-control:focus {
+        background-color: #495057;
+        border-color: #80bdff;
+        color: #fff;
+      }
+      h5.text-muted {
+        color: #adb5bd;
+      }
+      .custom-select {
+        background-color: #495057;
+        border-color: #495057;
+        color: #fff;
+      }
+
+      .custom-select:focus {
+        background-color: #495057;
+        border-color: #80bdff;
+        color: #fff;
+      }
+
+      @media (min-width: 992px) {
+        .navbar-brand {
+          display: inline-block;
+        }
+        .user-text {
+          display: inline-block;
+          margin-left: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a href="{{ url_for('pro') }}"
+          ><img
+            src="static/SmartRegex_logo_transparent.png"
+            width="165px"
+            height="auto"
+          />
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ml-auto">
+            {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('privacy') }}"
+                >Privacy Policy</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/logout">Logout</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('privacy') }}"
+                >Privacy Policy</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('signup') }}">Signup</a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+      <h5 class="text-center mb-4 text-muted user-text">{{ user }}</h5>
+      <h1 class="text-center my-4">SmartRegex Pro</h1>
+      <h3 class="text-center mb-4">AI-powered Regex Tool</h3>
+      <div class="row">
+        <div class="col-lg-6 offset-lg-3 col-md-8 offset-md-2">
+          <form id="regex_form">
+            <div class="form-group">
+              <label for="model">Select Model:</label>
+              <select
+                id="model"
+                name="model"
+                class="form-control custom-select"
+              >
+                <option value="gpt-3.5-turbo" selected>GPT-3.5-Turbo</option>
+                <option value="gpt-4" disabled>GPT-4</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="input_text">Input Text:</label>
+              <input
+                type="text"
+                id="input_text"
+                name="input_text"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="explanation"
+                >Explain what you want to do with regex:</label
+              >
+              <textarea
+                id="explanation"
+                name="explanation"
+                class="form-control"
+                rows="3"
+                required
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Get Regex</button>
+          </form>
+          <div id="generated_regex_container" class="mx-auto">
+            <h2 class="my-4">Generated Regex:</h2>
+            <pre id="generated_regex"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

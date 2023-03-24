@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>SmartRegex - User Profile</title>
+    <link rel="icon" href="static/SmartRegex_logo_small.png" />
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.4/purify.min.js"></script>
+
+    <script>
+      $(document).ready(function () {
+        function sanitizeInput(input) {
+          return DOMPurify.sanitize(input);
+        }
+
+        if (
+          "{{ message }}" === "Email has been confirmed and is now changed!"
+        ) {
+          Swal.fire({
+            title: "Success!",
+            text: "Email has been confirmed!",
+            icon: "success",
+            confirmButtonText: "OK",
+            theme: "dark",
+          });
+        } else if (
+          "{{ message }}" === "Token expired or not found. Please try again."
+        ) {
+          Swal.fire({
+            title: "Error!",
+            text: "Token expired or not found. Please try again.",
+            icon: "error",
+            confirmButtonText: "OK",
+            theme: "dark",
+          });
+        } else if ("{{ message }}" === "User not found.") {
+          Swal.fire({
+            title: "Error!",
+            text: "User not found, log in again and retry.",
+            icon: "error",
+            confirmButtonText: "OK",
+            theme: "dark",
+          });
+        }
+
+        $("#changeEmailBTN").on("click", function (e) {
+          e.preventDefault();
+          const dirty_email = $("#email").val();
+          const email = sanitizeInput(dirty_email);
+
+          if (email !== "{{ user.email }}") {
+            $.ajax({
+              type: "POST",
+              url: "/update_email",
+              data: { new_email: email },
+              success: function (response) {
+                if (response["success"]) {
+                  Swal.fire({
+                    title: "Success!",
+                    text: response["success"],
+                    icon: "success",
+                    confirmButtonText: "OK",
+                    theme: "dark",
+                  });
+                } else {
+                  Swal.fire({
+                    title: "Error!",
+                    text: response["error"],
+                    icon: "error",
+                    confirmButtonText: "OK",
+                    theme: "dark",
+                  });
+                }
+              },
+              error: function (error) {
+                Swal.fire({
+                  title: "Error!",
+                  text: "Something went wrong. Please try again later.",
+                  icon: "error",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+              },
+            });
+          }
+        });
+
+        $("#profile_form").submit(function (event) {
+          event.preventDefault();
+
+          const dirty_newPassword = $("#new_password").val();
+          const newPassword = sanitizeInput(dirty_newPassword);
+          const dirty_confirmPassword = $("#confirm_password").val();
+          const confirmPassword = sanitizeInput(dirty_confirmPassword);
+          if (newPassword !== confirmPassword) {
+            Swal.fire({
+              title: "Error!",
+              text: "The new passwords do not match.",
+              icon: "error",
+              confirmButtonText: "OK",
+              theme: "dark",
+            });
+            return;
+          }
+
+          $.ajax({
+            type: "POST",
+            url: "/update_profile",
+            data: JSON.stringify({ new_password: newPassword }),
+            contentType: "application/json",
+            dataType: "json",
+            success: function (response) {
+              if (response["success"]) {
+                Swal.fire({
+                  title: "Success!",
+                  text: "Your profile has been updated.",
+                  icon: "success",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+              } else {
+                Swal.fire({
+                  title: "Error!",
+                  text: response["message"],
+                  icon: "error",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+              }
+            },
+            error: function (error) {
+              Swal.fire({
+                title: "Error!",
+                text: "Something went wrong. Please try again later.",
+                icon: "error",
+                confirmButtonText: "OK",
+                theme: "dark",
+              });
+            },
+          });
+        });
+
+        $("#cancel_subscription").on("click", function (e) {
+          // Handle canceling the subscription here
+          e.preventDefault();
+          const subscriptionId = "{{ subscription_id }}";
+          // Send an AJAX request to your server to cancel the subscription
+          $.ajax({
+            type: "POST",
+            url: "/cancel_subscription",
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify({
+              subscription_id: subscriptionId,
+            }),
+            success: function (response) {
+              if (response["status"] == "success") {
+                Swal.fire({
+                  title: "Success!",
+                  text: "Your subscription has been canceled.",
+                  icon: "success",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+                location.reload(); // Refresh the page to update the subscription status
+              } else {
+                Swal.fire({
+                  title: "Error!",
+                  text: response["message"],
+                  icon: "error",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+              }
+            },
+            error: function (error) {
+              Swal.fire({
+                title: "Error!",
+                text: "Something went wrong. Please try again later.",
+                icon: "error",
+                confirmButtonText: "OK",
+                theme: "dark",
+              });
+            },
+          });
+        });
+
+        $("#upgrade_subscription").on("click", function () {
+          location.href = "/benefits";
+        });
+      });
+    </script>
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #212529;
+        color: #f8f9fa;
+      }
+
+      .container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        background-color: #343a40;
+        border-radius: 0.5rem;
+      }
+
+      h1 {
+        margin-bottom: 1.5rem;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .btn {
+        cursor: pointer;
+      }
+
+      .btn-primary {
+        background-color: #28a745;
+        border-color: #28a745;
+        transition: background-color 0.3s ease, border-color 0.3s ease,
+          color 0.3s ease;
+      }
+
+      .btn-primary:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+        color: #fff;
+      }
+
+      input.form-control {
+        background-color: #495057;
+        border-color: #495057;
+        color: #fff;
+      }
+
+      input.form-control:focus {
+        background-color: #495057;
+        border-color: #80bdff;
+        color: #fff;
+      }
+
+      .subscription-status {
+        margin-bottom: 1.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a href="{{ url_for('index') }}"
+          ><img
+            src="static/SmartRegex_logo_transparent.png"
+            width="165px"
+            height="auto"
+          />
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ml-auto">
+            {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('privacy') }}"
+                >Privacy Policy</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('benefits') }}"
+                >Pro Benefits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/logout">Logout</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('benefits') }}"
+                >Pro Benefits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('privacy') }}"
+                >Privacy Policy</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('signup') }}">Signup</a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+      <h1 class="text-center">User Profile</h1>
+      <form id="profile_form">
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="form-control"
+            value="{{ user.email }}"
+            required
+          />
+        </div>
+        <button id="changeEmailBTN" class="btn btn-success">
+          Change Email
+        </button>
+
+        <div class="form-group mt-4">
+          <label for="new_password">New Password:</label>
+          <input
+            type="password"
+            id="new_password"
+            name="new_password"
+            class="form-control"
+          />
+        </div>
+        <div class="form-group">
+          <label for="confirm_password">Confirm New Password:</label>
+          <input
+            type="password"
+            id="confirm_password"
+            name="confirm_password"
+            class="form-control"
+          />
+        </div>
+        <button type="submit" class="btn btn-primary">Change Password</button>
+      </form>
+      <center>
+        <div class="subscription-status mt-4">
+          <p>Subscription Status:</p>
+          {% if user.subscription_status == 'pro' %}
+          <button id="cancel_subscription" class="btn btn-danger">
+            Cancel Subscription
+          </button>
+          {% else %}
+          <button id="upgrade_subscription" class="btn btn-success">
+            Upgrade to Pro
+          </button>
+          {% endif %}
+        </div>
+      </center>
+    </div>
+  </body>
+</html>

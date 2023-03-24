@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy - SmartRegex</title>
+    <link rel="icon" href="static/SmartRegex_logo_small.png" />
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #212529;
+        color: #f8f9fa;
+      }
+      .container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        background-color: #343a40;
+        border-radius: 0.5rem;
+      }
+      h1,
+      h2 {
+        margin-bottom: 1.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a href="{{ url_for('index') }}"
+          ><img
+            src="static/SmartRegex_logo_transparent.png"
+            width="165px"
+            height="auto"
+          />
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <h5 class="text-center mb-4 text-muted">{{ user }}</h5>
+          <ul class="navbar-nav ml-auto">
+            {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('pro') }}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('benefits') }}"
+                >Pro Benefits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/logout">Logout</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('benefits') }}"
+                >Pro Benefits</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('signup') }}">Signup</a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+      <h1 class="text-center">Privacy Policy</h1>
+      <br />
+      <h2>IP Addresses</h2>
+      <p>
+        We collect and store IP addresses for users who are not logged in or do
+        not have a paid account in order to provide limited access to our
+        service. IP addresses are hashed for privacy and security reasons. We
+        automatically delete IP addresses older than a week.
+      </p>
+      <h2>Google AdSense</h2>
+      <p>
+        We use Google AdSense to display ads on our website. Google AdSense may
+        collect information about your browsing activity and show relevant ads
+        based on your interests. To learn more about Google AdSense and how it
+        collects and processes data, please visit
+        <a
+          href="https://www.google.com/policies/technologies/ads/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Google's Advertising Policies</a
+        >.
+      </p>
+      <h2>PayPal Subscription Payments</h2>
+      <p>
+        Our paid subscription services are processed through PayPal. Any payment
+        and personal information you provide during the payment process is
+        managed by PayPal, and we do not store your payment details. To learn
+        more about how PayPal handles your data, please visit
+        <a
+          href="https://www.paypal.com/us/webapps/mpp/ua/privacy-full"
+          target="_blank"
+          rel="noopener noreferrer"
+          >PayPal's Privacy Policy</a
+        >.
+      </p>
+    </div>
+  </body>
+</html>

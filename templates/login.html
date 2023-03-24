@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="static/SmartRegex_logo_small.png" />
+    <title>SmartRegex - Login</title>
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1355742178784790"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.4/purify.min.js"></script>
+
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #212529;
+        color: #f8f9fa;
+      }
+      .login-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding-top: 2rem;
+      }
+      .login-card {
+        background-color: #343a40;
+        border-radius: 0.5rem;
+        padding: 2rem;
+      }
+      .login-card .form-control {
+        background-color: #495057;
+        border-color: #495057;
+        color: #fff;
+      }
+      .login-card .form-control:focus {
+        background-color: #495057;
+        border-color: #80bdff;
+        color: #fff;
+      }
+      .login-card .btn {
+        background-color: #28a745;
+        border-color: #28a745;
+      }
+      .login-card .btn:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="login-container">
+        <nav
+          class="navbar navbar-expand-lg navbar-dark bg-dark"
+          style="border-radius: 0.5rem"
+        >
+          <div>
+            <a class="navbar-brand" href="{{ url_for('index') }}">SmartRegex</a>
+            <a class="navbar-image" href="{{ url_for('index') }}"
+              ><img
+                src="static/SmartRegex_logo_transparent_small.png"
+                height="43px"
+                width="auto"
+              />
+            </a>
+          </div>
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-toggle="collapse"
+            data-target="#navbarNav"
+            aria-controls="navbarNav"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+              {% if current_user.is_authenticated %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('pro') }}">Home</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('benefits') }}"
+                  >Pro Benefits</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('privacy') }}"
+                  >Privacy Policy</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/logout">Logout</a>
+              </li>
+              {% else %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('benefits') }}"
+                  >Pro Benefits</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('privacy') }}"
+                  >Privacy Policy</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('signup') }}">Signup</a>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+        </nav>
+        <div class="card login-card">
+          <div class="card-body">
+            <h3 class="card-title text-center mb-4">Login</h3>
+            {% if error %}
+            <div class="alert alert-danger" role="alert">{{ error }}</div>
+            {% endif %}
+            <form method="POST" action="{{ url_for('login') }}">
+              <div class="form-group">
+                <label for="username_or_email"
+                  >Username or Email address:</label
+                >
+                <input
+                  type="text"
+                  id="username_or_email"
+                  name="username_or_email"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="password">Password:</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="remember" />
+                <label class="form-check-label" for="remember"
+                  >Remember me</label
+                >
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">
+                Login
+              </button>
+            </form>
+            <div class="text-center mt-4">
+              <a href="#">Forgot password?</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

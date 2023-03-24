@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartRegex Benefits - AI-powered Regex Tool</title>
+    <link rel="icon" href="static/SmartRegex_logo_small.png" />
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #212529;
+        color: #f8f9fa;
+      }
+      h1,
+      h3,
+      h5 {
+        margin-bottom: 1.5rem;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        background-color: #343a40;
+        border-radius: 0.5rem;
+      }
+      button.btn {
+        cursor: pointer;
+        background-color: #28a745;
+        border-color: #28a745;
+        transition: background-color 0.3s ease, border-color 0.3s ease,
+          color 0.3s ease;
+      }
+
+      button.btn:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+        color: #fff;
+      }
+
+      h5.text-muted {
+        color: #adb5bd;
+      }
+    </style>
+
+    <script>
+      $(document).ready(() => {
+        $("#upgradeBTN").on("click", () => {
+          if ("{{ user }}" == "Guest") {
+            window.location.href = "/login";
+          }
+          window.location.href = "/payment";
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <!-- <a class="navbar-brand" href="{{ url_for('index') }}">SmartRegex</a> -->
+        <a href="{{ url_for('index') }}"
+          ><img
+            src="static/SmartRegex_logo_transparent.png"
+            width="165px"
+            height="auto"
+          />
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ml-auto">
+            {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('pro') }}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('privacy') }}"
+                >Privacy Policy</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/logout">Logout</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('privacy') }}"
+                >Privacy Policy</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('signup') }}">Signup</a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+      <div class="container">
+        <h1 class="text-center my-4">Upgrade to SmartRegex Pro</h1>
+        <h3 class="text-center mb-4">AI-powered Regex Tool</h3>
+        <div class="row">
+          <div class="col-md-8 offset-md-2">
+            <h5 class="mb-4">Benefits of SmartRegex Pro:</h5>
+            <ul>
+              <li>No ads</li>
+              <li>Unlimited queries</li>
+              <li>No CAPTCHAs</li>
+            </ul>
+            <div class="text-center">
+              <button type="button" class="btn btn-primary" id="upgradeBTN">
+                Upgrade to Pro
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

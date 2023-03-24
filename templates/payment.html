@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartRegex - Payment</title>
+    <link rel="icon" href="static/SmartRegex_logo_small.png" />
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/themes/dark/dark.min.css"
+    />
+
+    <script
+      src="https://www.paypal.com/sdk/js?client-id=AVYvtQBcRwFbMbmZKIoOIXraZ8eumEyJHXTadqBe51mCwEnprycGLINNU_-MsfOTNRwQqFSs-uKsW_Od&vault=true&intent=subscription"
+      data-sdk-integration-source="button-factory"
+    ></script>
+
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #212529;
+        color: #f8f9fa;
+      }
+      .payment-container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 2rem;
+        background-color: #343a40;
+        border-radius: 0.5rem;
+      }
+      .payment-text {
+        margin-left: 1rem;
+        margin-right: 1rem;
+      }
+      h1,
+      h3,
+      h5 {
+        margin-bottom: 1.5rem;
+      }
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      .paypal-button-container {
+        text-align: center;
+      }
+      nav {
+        margin-bottom: 2rem;
+        border-radius: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="{{ url_for('index') }}">SmartRegex</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('index') }}">Back</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('privacy') }}"
+                >Privacy Policy</a
+              >
+            </li>
+          </ul>
+        </div>
+      </nav>
+      <div class="payment-container">
+        <h3 class="text-center mb-4">Payment</h3>
+        <div class="payment-text">
+          <p>
+            Proceed with the payment to upgrade your account to the Pro Tier.
+          </p>
+        </div>
+        Production
+        <div
+          class="paypal-button-container"
+          id="paypal-button-container-P-8CN47771PP841124JMQLYCFY"
+        ></div>
+      </div>
+    </div>
+
+    <script>
+      paypal
+        .Buttons({
+          style: {
+            shape: "rect",
+            color: "gold",
+            layout: "vertical",
+            label: "subscribe",
+          },
+          createSubscription: function (data, actions) {
+            return actions.subscription.create({
+              plan_id: "P-8CN47771PP841124JMQLYCFY",
+            });
+          },
+          onApprove: function (data, actions) {
+            const subscription_id = data.subscriptionID;
+
+            $.ajax({
+              url: "/payment_successful",
+              type: "POST",
+              dataType: "json",
+              contentType: "application/json",
+              data: JSON.stringify({
+                transaction_id: data["transaction_id"] || "empty",
+                subscription_id: subscription_id,
+              }),
+            });
+            Swal.fire({
+              icon: "success",
+              title: "Transaction completed",
+              text: "Transaction completed! Account is now upgraded.",
+              confirmButtonText: "OK",
+              theme: "dark",
+            }).then(() => {
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 1600);
+            });
+          },
+        })
+        .render("#paypal-button-container-P-8CN47771PP841124JMQLYCFY");
+    </script>
+  </body>
+</html>
