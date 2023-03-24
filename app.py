@@ -7,6 +7,7 @@ import atexit
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from itsdangerous import URLSafeTimedSerializer
 from email.mime.text import MIMEText
 import base64
 import os
@@ -21,26 +22,50 @@ from datetime import timezone
 from dotenv import dotenv_values
 import os
 
-
+# Load environment variables
 config = dotenv_values(".env")
 app = Flask(__name__)
+
+# Configure login manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-
+# Configure database and secret key
 app.config['SECRET_KEY'] = config['DB_SECRET']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Configure database for AWS RDS or local
 if 'RDS_DB_NAME' in os.environ:
     app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{config["DB_USERNAME"]}:{config["DB_PASSWORD"]}@{config["DB_HOST"]}:{config["DB_PORT"]}/{config["DB_NAME"]}'
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] =\
         'sqlite:///' + os.path.join(basedir, 'database.db')
+
+# Set up database
 db = SQLAlchemy(app)
 
+# Configure OpenAI API keys
 openai.api_key = config['CHATGPT_API_KEY']
 openai.organization = config['OPENAI_ORG']
 
+# Configure database User model
+"""Users Model
+    id: int
+    username: str
+    email: str
+    password_hash: str
+    subscription_status: str
+    transaction_id: str
+    email_confirmed: str
+    subscription_id: str
+    password_reset_timestamp: datetime
+    set_password: function
+    check_password: function
+    as_dict: function
+    __repr__: function
+    load_user: function
+"""
 class Users(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -51,6 +76,7 @@ class Users(UserMixin, db.Model):
     transaction_id = db.Column(db.String(64))
     email_confirmed = db.Column(db.String(64), default='False')
     subscription_id = db.Column(db.String(64))
+    password_reset_timestamp = db.Column(db.DateTime)
 
 
     def set_password(self, password):
@@ -69,6 +95,12 @@ class Users(UserMixin, db.Model):
     def load_user(user_id):
         return Users.query.get(int(user_id))
 
+# Configure database FreeUserQuery model
+"""FreeUserQuery Model
+    hashed_ip_address: str
+    query_count: int
+    last_query_date: datetime
+"""
 class FreeUserQuery(db.Model):
     __tablename__ = 'free_user_queries'
 
@@ -76,7 +108,7 @@ class FreeUserQuery(db.Model):
     query_count = db.Column(db.Integer, nullable=False)
     last_query_date = db.Column(db.Date, nullable=False)
 
-
+# Run scheduler to remove old free user queries
 def remove_old_free_user_queries():
     week_ago = datetime.now(timezone.utc).date() - timedelta(days=7)
     old_queries = FreeUserQuery.query.filter(FreeUserQuery.last_query_date <= week_ago).all()
@@ -86,12 +118,14 @@ def remove_old_free_user_queries():
 
     db.session.commit()
 
+# Validate email address
 def is_valid_email(email):
     email_regex = re.compile(
         r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
     )
     return bool(email_regex.match(email))
 
+# Send email
 def send_email(subject, body, to):
     service_account_file = config['SERVICE_AUTH']
 
@@ -114,17 +148,30 @@ def send_email(subject, body, to):
         send_message = None
     return send_message
 
+# Generate hash for IP address
 def get_hashed_ip_address(ip_address):
     sha256 = hashlib.sha256()
     sha256.update(ip_address.encode())
     return sha256.hexdigest()
 
+# Get start date of week
 def get_week_start_date(date):
     return date - timedelta(days=date.weekday())
 
+# Sanitize user input
 def sanitize_input(input):
     return bleach.clean(input)
 
+# Function to get client IP address
+def get_client_ip():
+    if request.headers.get("CF-Connecting-IP"):
+        return request.headers.get("CF-Connecting-IP")
+    elif request.headers.get("X-Forwarded-For"):
+        return request.headers.get("X-Forwarded-For")
+    else:
+        return request.remote_addr
+
+# Start scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=remove_old_free_user_queries, trigger="interval", days=1)
 scheduler.start()
@@ -132,14 +179,20 @@ atexit.register(lambda: scheduler.shutdown())
 
 tokens = {}
 
+"""
+    Page Routes
+"""
+# Configure 401 error handler
 @app.errorhandler(401)
 def unauthorized_error(error):
     return redirect(url_for('index'))
 
+# Configure 404 error handler
 @app.errorhandler(404)
 def file_not_found_error(error):
     return render_template('404.html')
 
+# Configure index route
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
@@ -150,91 +203,14 @@ def index():
     message = messages[0] if messages else None
     return render_template('index.html', user=f'Hello, {current_user.username}', message=message)
 
+# Configure logout route
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('index'))
 
-
-def get_client_ip():
-    if request.headers.get("CF-Connecting-IP"):
-        return request.headers.get("CF-Connecting-IP")
-    elif request.headers.get("X-Forwarded-For"):
-        return request.headers.get("X-Forwarded-For")
-    else:
-        return request.remote_addr
-
-
-@app.route('/update_profile', methods=['POST', 'GET'])
-@login_required
-def update_profile():
-    if not current_user.is_authenticated:
-        return jsonify({'error': "Can't change a profile that doesn't exist."})
-    
-    dirty_new_password = request.get_json()['new_password']
-    new_password = sanitize_input(dirty_new_password)
-    hashed_password = generate_password_hash(new_password, method='sha256')
-    current_user.password_hash = hashed_password
-    db.session.commit()
-    send_email('ACCOUNT UPDATE - Password Change', 'The password for your account has just been changed.', current_user.email)
-    return jsonify({'success':'Password changed!'})
-
-@app.route('/update_email', methods=['POST'])
-def update_email():
-    if not current_user.is_authenticated:
-        return jsonify({'error': 'Cannot change email while not logged in.'})
-    dirty_new_email = request.form['new_email']
-    new_email = sanitize_input(dirty_new_email)
-
-    if not is_valid_email(new_email):
-        return jsonify({'error': f'{new_email} is not a valid email address!'})
-    user = current_user
-
-    # Generate a token and store it with the user's ID
-    token = uuid.uuid4().hex
-    tokens[token] = user.id
-
-    # Send an email with the token
-    subject = "Confirm your new email address"
-    body = f"Please confirm your new email address by clicking the following link: {url_for('confirm_email', token=token, new_email=new_email, _external=True)}"
-    send_email(subject, body, new_email)
-
-    return jsonify({"success": "An email has been sent to your new address for confirmation."})
-
-@app.route('/confirm_email/<token>')
-def confirm_email(token):
-    user_id = tokens.get(token)
-
-    if user_id is None:
-        flash("Token expired or not found. Please try again.")
-        return redirect(url_for('profile'))
-
-    user = Users.query.filter_by(id=user_id).first()
-
-    if user is None:
-        flash("User not found.")
-        return redirect(url_for('profile'))
-
-    # Update the email address and save the changes
-    dirty_email = request.args.get('new_email')
-    new_email = sanitize_input(dirty_email)
-    if user.email_confirmed == "False":
-        if user.email != new_email:
-            return redirect(url_for('index'))
-        user.email = new_email
-        user.email_confirmed = 'True'
-        db.session.commit()
-        del tokens[token]
-        flash("Email has been confirmed!")
-        return redirect(url_for('index'))
-    else:
-        user.email = new_email
-        db.session.commit()
-        del tokens[token]
-        flash("Email has been confirmed and is now changed!")
-        return redirect(url_for('profile'))
-
+# Route for viewing profile
 @app.route('/profile')
 @login_required
 def profile():
@@ -244,6 +220,7 @@ def profile():
     message = messages[0] if messages else None
     return render_template('profile.html', user=current_user, message=message)
 
+# Route for viewing benefits of subscription
 @app.route('/benefits')
 def benefits():
     if current_user.is_authenticated:
@@ -252,68 +229,18 @@ def benefits():
     else:
         return render_template('benefits.html', user="Guest")
 
-
+# Route for payment page
 @app.route('/payment', methods=['GET', 'POST'])
 @login_required
 def payment():
     return render_template('payment.html')
 
+# Route for privacy policy page
 @app.route('/privacy', methods=['GET', 'POST'])
 def privacy():
     return render_template('privacy.html')
 
-@app.route('/payment_successful', methods=['POST'])
-@login_required
-def payment_successful():
-    user_id = current_user.id
-    dirty_transaction_id = request.get_json()['transaction_id']
-    transaction_id = sanitize_input(dirty_transaction_id)
-
-    subscription_id = request.get_json()['subscription_id']
-
-    if user := Users.query.filter_by(id=user_id).first():
-        user.subscription_status = 'pro'
-        user.transaction_id = transaction_id
-        user.subscription_id = subscription_id
-        db.session.commit()
-        send_email('ACCOUNT UPGRADE', "The Pro subscription has been succesfully added to your account!", current_user.email)
-    else:
-        return jsonify({"error": "User not found"}), 404
-
-    return jsonify({'success': "Account upgraded!"})
-
-@app.route('/cancel_subscription', methods=['POST'])
-@login_required
-def cancel_subscription():
-    subscription_id = current_user.subscription_id
-    client_id = config['PP_CLIENT_ID']
-    client_secret = config['PP_CLIENT_SECRET']
-
-    auth_response = requests.post(
-        'https://api.paypal.com/v1/oauth2/token',
-        auth=(client_id, client_secret),
-        data={'grant_type': 'client_credentials'}
-    )
-
-    access_token = auth_response.json()['access_token']
-
-    cancel_response = requests.post(
-        f'https://api.paypal.com/v1/billing/subscriptions/{subscription_id}/cancel',
-        headers={'Authorization': f'Bearer {access_token}'},
-        json={"reason": "User requested cancellation"}
-    )
-
-    print(cancel_response.status_code)
-    if cancel_response.status_code != 204:
-        error_message = "Unknown error"
-        if cancel_response.headers.get('Content-Type') == 'application/json':
-            error_message = cancel_response.json().get("message", "Unknown error")
-        return jsonify({"status": "error", "error": error_message})
-
-    current_user.subscription_status = "free"
-    db.session.commit()
-    return jsonify({"status": "success"})
-
+# Route for logging in
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
@@ -337,6 +264,7 @@ def login():
 
     return render_template('login.html', error=error)
 
+# Route for signing up
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     error = None
@@ -385,11 +313,56 @@ def signup():
             return redirect(url_for('login'))
     return render_template('signup.html', error=error)
 
-@app.route('/forgot_password', methods=['POST'])
+# Route for initiating a password reset request
+@app.route('/forgot_password', methods=['POST', 'GET'])
 def forgot_password():
-    # TODO
-    pass
+    if request.method != 'POST':
+        return render_template('forgot_password.html')
+    dirty_email = request.form.get('email')
+    email = sanitize_input(dirty_email)
+    user = Users.query.filter_by(email=email).first()
 
+    if not user:
+        return jsonify({'error': "User not found."})
+
+    user.password_reset_timestamp = datetime.now(timezone.utc)
+    db.session.commit()
+    serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+    token = serializer.dumps({'email': user.email, 'timestamp': user.password_reset_timestamp.timestamp()}, salt='password-reset')
+    subject = "ACCOUNT UPDATE - RESET PASSWORD"
+    body = f"To reset your password, please click the following link: {url_for('reset_password', token=token, _external=True)}"
+    send_email(subject, body, user.email)
+
+    return render_template('forgot_password.html', success="A password reset link has been sent to your email.")
+
+# Route for resetting a password
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+    try:
+        data = serializer.loads(token, salt='password-reset', max_age=3600)
+        email = data['email']
+        token_timestamp = data['timestamp']
+    except:
+        # Handle expired or invalid token
+        return render_template('reset_password.html', error="Invalid or expired token.")
+
+    user = Users.query.filter_by(email=email).first()
+    if user.password_reset_timestamp.timestamp() != token_timestamp:
+        return render_template('forgot_password.html', error="This password reset link is no longer valid. Please request a new one.")
+
+    if request.method == 'POST':
+        dirty_new_password = request.form.get('new_password')
+        new_password = sanitize_input(dirty_new_password)
+        hashed_password = generate_password_hash(new_password, method='sha256')
+        user.password_hash = hashed_password
+        db.session.commit()
+
+        send_email('ACCOUNT UPDATE - PASSWORD RESET', 'The password for your account has just been reset.', user.email)
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', token=token)
+
+# Route for pro subscription users
 @app.route('/pro')
 @login_required
 def pro():
@@ -398,6 +371,137 @@ def pro():
     else:
         return redirect(url_for('index'))
 
+"""
+    API Routes
+"""
+# API Route for successful payment
+@app.route('/payment_successful', methods=['POST'])
+@login_required
+def payment_successful():
+    user_id = current_user.id
+    dirty_transaction_id = request.get_json()['transaction_id']
+    transaction_id = sanitize_input(dirty_transaction_id)
+
+    subscription_id = request.get_json()['subscription_id']
+
+    if user := Users.query.filter_by(id=user_id).first():
+        user.subscription_status = 'pro'
+        user.transaction_id = transaction_id
+        user.subscription_id = subscription_id
+        db.session.commit()
+        send_email('ACCOUNT UPGRADE', "The Pro subscription has been succesfully added to your account!", current_user.email)
+    else:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({'success': "Account upgraded!"})
+
+# API Route for cancelling subscription
+@app.route('/cancel_subscription', methods=['POST'])
+@login_required
+def cancel_subscription():
+    subscription_id = current_user.subscription_id
+    client_id = config['PP_CLIENT_ID']
+    client_secret = config['PP_CLIENT_SECRET']
+
+    auth_response = requests.post(
+        'https://api.paypal.com/v1/oauth2/token',
+        auth=(client_id, client_secret),
+        data={'grant_type': 'client_credentials'}
+    )
+
+    access_token = auth_response.json()['access_token']
+
+    cancel_response = requests.post(
+        f'https://api.paypal.com/v1/billing/subscriptions/{subscription_id}/cancel',
+        headers={'Authorization': f'Bearer {access_token}'},
+        json={"reason": "User requested cancellation"}
+    )
+
+    print(cancel_response.status_code)
+    if cancel_response.status_code != 204:
+        error_message = "Unknown error"
+        if cancel_response.headers.get('Content-Type') == 'application/json':
+            error_message = cancel_response.json().get("message", "Unknown error")
+        return jsonify({"status": "error", "error": error_message})
+
+    current_user.subscription_status = "free"
+    current_user.subscription_id = ''
+    db.session.commit()
+    return jsonify({"status": "success"})
+
+# API Route for changing password on profile page 
+@app.route('/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    if not current_user.is_authenticated:
+        return jsonify({'error': "Can't change a profile that doesn't exist."})
+    
+    dirty_new_password = request.get_json()['new_password']
+    new_password = sanitize_input(dirty_new_password)
+    hashed_password = generate_password_hash(new_password, method='sha256')
+    current_user.password_hash = hashed_password
+    db.session.commit()
+    send_email('ACCOUNT UPDATE - Password Change', 'The password for your account has just been changed.', current_user.email)
+    return jsonify({'success':'Password changed!'})
+
+# API Route for changing email on profile page
+@app.route('/update_email', methods=['POST'])
+def update_email():
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Cannot change email while not logged in.'})
+    dirty_new_email = request.form['new_email']
+    new_email = sanitize_input(dirty_new_email)
+
+    if not is_valid_email(new_email):
+        return jsonify({'error': f'{new_email} is not a valid email address!'})
+    user = current_user
+
+    # Generate a token and store it with the user's ID
+    token = uuid.uuid4().hex
+    tokens[token] = user.id
+
+    # Send an email with the token
+    subject = "Confirm your new email address"
+    body = f"Please confirm your new email address by clicking the following link: {url_for('confirm_email', token=token, new_email=new_email, _external=True)}"
+    send_email(subject, body, new_email)
+
+    return jsonify({"success": "An email has been sent to your new address for confirmation."})
+
+# API Route for confirming email change
+@app.route('/confirm_email/<token>')
+def confirm_email(token):
+    user_id = tokens.get(token)
+
+    if user_id is None:
+        flash("Token expired or not found. Please try again.")
+        return redirect(url_for('profile'))
+
+    user = Users.query.filter_by(id=user_id).first()
+
+    if user is None:
+        flash("User not found.")
+        return redirect(url_for('profile'))
+
+    # Update the email address and save the changes
+    dirty_email = request.args.get('new_email')
+    new_email = sanitize_input(dirty_email)
+    if user.email_confirmed == "False":
+        if user.email != new_email:
+            return redirect(url_for('index'))
+        user.email = new_email
+        user.email_confirmed = 'True'
+        db.session.commit()
+        del tokens[token]
+        flash("Email has been confirmed!")
+        return redirect(url_for('index'))
+    else:
+        user.email = new_email
+        db.session.commit()
+        del tokens[token]
+        flash("Email has been confirmed and is now changed!")
+        return redirect(url_for('profile'))
+
+# API Route for generating regex for free users
 @app.route('/generate_regex', methods=['POST'])
 def generate_regex():
     if (
@@ -492,6 +596,7 @@ def generate_regex():
         message = f"You have used up all of your queries for this week. Upgrade to Pro, or you can try again in {remaining_days} day(s) and {remaining_hours} hour(s)."
         return jsonify({'error': 'Out of queries.', 'message':message})
 
+# API Route for generating regex for pro users
 @app.route('/generate_regex_pro', methods=['POST'])
 def generate_regex_pro():
     if (
