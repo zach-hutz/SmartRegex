@@ -650,6 +650,7 @@ def generate_regex_pro():
         return jsonify({'error': 'good try.'})
 
 if __name__ == '__main__':
+    application = app
     with app.app_context():  
         db.create_all()  
     app.run()
