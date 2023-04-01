@@ -142,9 +142,7 @@ def send_email(subject, body, to):
         create_message = {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
 
         send_message = (service.users().messages().send(userId="me", body=create_message).execute())
-        print(F'sent message to {to} Message Id: {send_message["id"]}')
     except HttpError as error:
-        print(F'An error occurred: {error}')
         send_message = None
     return send_message
 
@@ -170,6 +168,14 @@ def get_client_ip():
         return request.headers.get("X-Forwarded-For")
     else:
         return request.remote_addr
+
+def replace_tags_with_placeholders(text):
+    text = text.replace("<", "##_lt_##").replace(">", "##_gt_##")
+    return text
+
+def restore_tags_from_placeholders(text):
+    text = text.replace("##_lt_##", "<").replace("##_gt_##", ">")
+    return text
 
 # Start scheduler
 scheduler = BackgroundScheduler()
@@ -286,6 +292,8 @@ def signup():
         
         if password != confirm_password:
             error = 'Passwords do not match.'
+        elif len(password) < 8:
+            error = 'Password must be at least 8 characters.'
         elif not (is_valid_email(email)):
             error = 'Email not valid.'
         elif existing_user := Users.query.filter(
@@ -417,7 +425,6 @@ def cancel_subscription():
         json={"reason": "User requested cancellation"}
     )
 
-    print(cancel_response.status_code)
     if cancel_response.status_code != 204:
         error_message = "Unknown error"
         if cancel_response.headers.get('Content-Type') == 'application/json':
@@ -500,6 +507,68 @@ def confirm_email(token):
         del tokens[token]
         flash("Email has been confirmed and is now changed!")
         return redirect(url_for('profile'))
+
+# API Route for matching sentence and pattern
+@app.route('/match', methods=['POST'])
+def match():
+
+    dirty_recaptcha_response = request.get_json()["recaptcha_response"]
+    recaptcha_response = sanitize_input(dirty_recaptcha_response)
+
+    recaptcha_data = {"secret": config['GOOGLE_KEY'], "response": recaptcha_response}
+    recaptcha_url = "https://www.google.com/recaptcha/api/siteverify"
+    verification_response = requests.post(recaptcha_url, data=recaptcha_data)
+    verification_result = verification_response.json()
+
+    if not verification_result["success"]:
+        return jsonify({"error": "reCAPTCHA verification failed"}), 400
+
+    dirty_sentence = request.get_json()['sentence']
+    dirty_pattern = request.get_json()['pattern']
+    
+    sentence = replace_tags_with_placeholders(dirty_sentence)
+    pattern = replace_tags_with_placeholders(dirty_pattern)
+
+    sentence = sanitize_input(sentence)
+    pattern = sanitize_input(pattern)
+
+    sentence = restore_tags_from_placeholders(sentence)
+    pattern = restore_tags_from_placeholders(pattern)
+
+    try:
+        regex = re.compile(pattern)
+        matches = regex.finditer(sentence)
+        for match in matches:
+            sentence = sentence.replace(match.group(), f'<span class="highlight">{match.group().strip()}</span>')
+
+        return jsonify({"result": sentence})
+    except re.error:
+        return jsonify({"result": "Invalid regex pattern."})
+
+# API Route for matching sentence and pattern with pro features
+@app.route('/match_pro', methods=['POST'])
+def match_pro():
+    dirty_sentence = request.get_json()['sentence']
+    dirty_pattern = request.get_json()['pattern']
+    
+    sentence = replace_tags_with_placeholders(dirty_sentence)
+    pattern = replace_tags_with_placeholders(dirty_pattern)
+
+    sentence = sanitize_input(sentence)
+    pattern = sanitize_input(pattern)
+
+    sentence = restore_tags_from_placeholders(sentence)
+    pattern = restore_tags_from_placeholders(pattern)
+
+    try:
+        regex = re.compile(pattern)
+        matches = regex.finditer(sentence)
+        for match in matches:
+            sentence = sentence.replace(match.group(), f'<span class="highlight">{match.group().strip()}</span>')
+
+        return jsonify({"result": sentence})
+    except re.error:
+        return jsonify({"result": "Invalid regex pattern."})
 
 # API Route for generating regex for free users
 @app.route('/generate_regex', methods=['POST'])
@@ -653,4 +722,4 @@ if __name__ == '__main__':
     application = app
     with app.app_context():  
         db.create_all()  
-    app.run()
+    app.run(debug=True)

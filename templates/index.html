@@ -47,6 +47,66 @@
           });
         }
 
+        $("#create-tab").on("click", function () {
+          $("#create-tab").addClass("active");
+          $("#view-tab").removeClass("active");
+          $("#create").addClass("active");
+          $("#view").removeClass("active");
+          $("#view").removeClass("show");
+          $("#create").addClass("show");
+        });
+        $("#view-tab").on("click", function () {
+          $("#view-tab").addClass("active");
+          $("#create-tab").removeClass("active");
+          $("#create").removeClass("active");
+          $("#view").addClass("active");
+          $("#create").removeClass("show");
+          $("#view").addClass("show");
+        });
+
+        $("#matcher_form").submit(function (event) {
+          event.preventDefault();
+
+          const sentence = $("#sentence").val();
+          const pattern = $("#regex_pattern").val();
+
+          $.ajax({
+            url: "/match",
+            type: "POST",
+            data: JSON.stringify({
+              sentence: sentence,
+              pattern: pattern,
+              recaptcha_response: grecaptcha.getResponse(),
+            }),
+            contentType: "application/json",
+            success: function (response) {
+              if (response.result === "Invalid regex pattern.") {
+                Swal.fire({
+                  title: "Error!",
+                  text: "Invalid regex pattern. Please try again.",
+                  icon: "error",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+              } else {
+                $("#highlighted_text").html(response.result);
+                $("#highlighted_text_container").fadeIn();
+              }
+            },
+            error: function (response) {
+              if (response.error) {
+                Swal.fire({
+                  title: "Error!",
+                  text: response.error,
+                  icon: "error",
+                  confirmButtonText: "OK",
+                  theme: "dark",
+                });
+              }
+            },
+          });
+        });
+
         let prev_regex = localStorage.getItem("smart_regex_query");
         if (prev_regex != null && prev_regex != "") {
           $("#generated_regex").text(prev_regex);
@@ -139,6 +199,32 @@
         color: #f8f9fa;
       }
 
+      .nav-link {
+        cursor: pointer;
+      }
+      .nav-item {
+        display: inline-block;
+        margin: 5px;
+      }
+
+      .tab-pane {
+        display: none;
+      }
+
+      .tab-pane.active {
+        display: block;
+      }
+
+      #highlighted_text_container {
+        display: none;
+        border: 1px solid #495057;
+        border-radius: 0.25rem;
+        background-color: #343a40;
+        color: #f8f9fa;
+        padding: 1rem;
+        margin-top: 25px;
+        margin-bottom: 25px;
+      }
       #generated_regex_container {
         display: none;
         border: 1px solid #495057;
@@ -150,6 +236,23 @@
       }
       #generated_regex {
         color: #f8f9fa;
+      }
+      #highlighted_text {
+        color: #f8f9fa;
+        font-size: 16px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #343a40;
+      }
+      .highlight {
+        background-color: #ffa500;
+        color: #000;
+        padding: 2px 2px;
+        border-radius: 4px;
+        font-weight: 600;
       }
       h1,
       h3,
@@ -247,8 +350,8 @@
   <body>
     <div class="container">
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a href="{{ url_for('index') }}"
-          ><img
+        <a href="{{ url_for('index') }}">
+          <img
             src="static/SmartRegex_logo_transparent.png"
             width="165px"
             height="auto"
@@ -268,6 +371,9 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ml-auto">
             {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+            </li>
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('privacy') }}"
                 >Privacy Policy</a
@@ -307,53 +413,131 @@
       <h3 class="text-center mb-4">AI-powered Regex Tool</h3>
       <h5 class="text-center mb-4 text-muted">Current Model: gpt-3.5-turbo</h5>
 
-      <div class="row">
-        <div class="col-lg-6 offset-lg-3 col-md-8 offset-md-2">
-          <form id="regex_form">
-            <div class="form-group">
-              <label for="input_text">Input Text:</label>
-              <input
-                type="text"
-                id="input_text"
-                name="input_text"
-                class="form-control"
-                required
-              />
+      <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item">
+          <a
+            class="nav-link active"
+            id="create-tab"
+            data-toggle="tab"
+            href="#create"
+            role="tab"
+            aria-controls="create"
+            aria-selected="true"
+            >Create</a
+          >
+        </li>
+        <li class="nav-item">
+          <a
+            class="nav-link"
+            id="view-tab"
+            data-toggle="tab"
+            href="#view"
+            role="tab"
+            aria-controls="view"
+            aria-selected="false"
+            >View</a
+          >
+        </li>
+      </ul>
+      <div class="tab-content mt-4" id="myTabContent">
+        <div
+          class="tab-pane fade show active"
+          id="create"
+          role="tabpanel"
+          aria-labelledby="create-tab"
+        >
+          <div class="row">
+            <div class="col-lg-6 offset-lg-3 col-md-8 offset-md-2">
+              <form id="regex_form">
+                <div class="form-group">
+                  <label for="input_text">Input Text:</label>
+                  <input
+                    type="text"
+                    id="input_text"
+                    name="input_text"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="explanation"
+                    >Explain what you want to do with regex:</label
+                  >
+                  <textarea
+                    id="explanation"
+                    name="explanation"
+                    class="form-control"
+                    rows="3"
+                    required
+                  ></textarea>
+                </div>
+                <div
+                  class="g-recaptcha mb-3"
+                  data-sitekey="6LewjhElAAAAAK2tJj1BNd7lrli-_UUfRv69lH4J"
+                ></div>
+                <button type="submit" class="btn btn-primary">Get Regex</button>
+              </form>
+              <div id="generated_regex_container" class="mx-auto">
+                <h2 class="my-4">Generated Regex:</h2>
+                <pre id="generated_regex"></pre>
+              </div>
             </div>
-            <div class="form-group">
-              <label for="explanation"
-                >Explain what you want to do with regex:</label
-              >
-              <textarea
-                id="explanation"
-                name="explanation"
-                class="form-control"
-                rows="3"
-                required
-              ></textarea>
+          </div>
+        </div>
+        <div
+          class="tab-pane fade"
+          id="view"
+          role="tabpanel"
+          aria-labelledby="view-tab"
+        >
+          <div class="row">
+            <div class="col-lg-6 offset-lg-3 col-md-8 offset-md-2">
+              <form id="matcher_form">
+                <div class="form-group">
+                  <label for="sentence">Text to be matched:</label>
+                  <textarea
+                    class="form-control"
+                    id="sentence"
+                    rows="3"
+                    placeholder="Enter text to be matched"
+                    required
+                  ></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="regex_pattern">Regular Expression Pattern:</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="regex_pattern"
+                    placeholder="Enter regex pattern"
+                    required
+                  />
+                </div>
+                <div
+                  class="g-recaptcha mb-3"
+                  data-sitekey="6LewjhElAAAAAK2tJj1BNd7lrli-_UUfRv69lH4J"
+                ></div>
+                <button type="submit" class="btn btn-primary">Match</button>
+              </form>
+              <div id="highlighted_text_container" class="mx-auto">
+                <h2 class="my-4">Generated Regex:</h2>
+                <p id="highlighted_text"></p>
+              </div>
             </div>
-            <div
-              class="g-recaptcha mb-3"
-              data-sitekey="6LewjhElAAAAAK2tJj1BNd7lrli-_UUfRv69lH4J"
-            ></div>
-            <button type="submit" class="btn btn-primary">Get Regex</button>
-          </form>
-          <div id="generated_regex_container" class="mx-auto">
-            <h2 class="my-4">Generated Regex:</h2>
-            <pre id="generated_regex"></pre>
           </div>
         </div>
       </div>
-    </div>
-    <div id="cookie-consent-banner" class="cookie-consent-banner">
-      <p>
-        We use cookies to ensure you get the best experience on our website. By
-        using our site, you agree to our use of cookies.
-        <a href="/privacy">Learn more</a>.
-      </p>
-      <button id="cookie-consent-button" class="cookie-consent-button">
-        Accept
-      </button>
+
+      <div id="cookie-consent-banner" class="cookie-consent-banner">
+        <p>
+          We use cookies to ensure you get the best experience on our website.
+          By using our site, you agree to our use of cookies.
+          <a href="/privacy">Learn more</a>.
+        </p>
+        <button id="cookie-consent-button" class="cookie-consent-button">
+          Accept
+        </button>
+      </div>
     </div>
   </body>
 </html>
