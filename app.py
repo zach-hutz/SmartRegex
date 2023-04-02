@@ -78,7 +78,6 @@ class Users(UserMixin, db.Model):
     subscription_id = db.Column(db.String(64))
     password_reset_timestamp = db.Column(db.DateTime)
 
-
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -93,7 +92,7 @@ class Users(UserMixin, db.Model):
     
     @login_manager.user_loader
     def load_user(user_id):
-        return Users.query.get(int(user_id))
+        return db.session.get(Users, int(user_id))
 
 # Configure database FreeUserQuery model
 """FreeUserQuery Model
@@ -103,7 +102,6 @@ class Users(UserMixin, db.Model):
 """
 class FreeUserQuery(db.Model):
     __tablename__ = 'free_user_queries'
-
     hashed_ip_address = db.Column(db.String, primary_key=True)
     query_count = db.Column(db.Integer, nullable=False)
     last_query_date = db.Column(db.Date, nullable=False)
@@ -722,4 +720,4 @@ if __name__ == '__main__':
     application = app
     with app.app_context():  
         db.create_all()  
-    app.run(debug=True)
+    app.run()

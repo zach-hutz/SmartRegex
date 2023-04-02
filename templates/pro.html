@@ -47,6 +47,14 @@
           $("#view").addClass("active");
           $("#create").removeClass("show");
           $("#view").addClass("show");
+
+          const inputText = $("#input_text").val();
+          const explanation = $("#explanation").val();
+          const pattern = $("#generated_regex").text();
+          if (inputText != "" && explanation != "" && pattern != "") {
+            $("#sentence").text(inputText);
+            $("#regex_pattern").val(pattern);
+          }
         });
 
         $("#matcher_form").submit(function (event) {
@@ -104,10 +112,6 @@
           const dirtyExplanation = $("#explanation").val();
           const explanation = sanitizeInput(dirtyExplanation);
 
-          // const dirtyModel = $("#model").val();
-          //alert(dirtyModel);
-          //const model = sanitizeInput(dirtyModel);
-
           $.ajax({
             type: "POST",
             url: "/generate_regex_pro",
@@ -127,6 +131,7 @@
                 });
                 return;
               }
+
               const regex = response.regex;
               $("#generated_regex").text(regex);
               $("#generated_regex_container").fadeIn();
@@ -412,6 +417,7 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Get Regex</button>
               </form>
+
               <div id="generated_regex_container" class="mx-auto">
                 <h2 class="my-4">Generated Regex:</h2>
                 <pre id="generated_regex"></pre>

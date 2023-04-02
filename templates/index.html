@@ -62,6 +62,14 @@
           $("#view").addClass("active");
           $("#create").removeClass("show");
           $("#view").addClass("show");
+
+          const inputText = $("#input_text").val();
+          const explanation = $("#explanation").val();
+          const pattern = $("#generated_regex").text();
+          if (inputText != "" && explanation != "" && pattern != "") {
+            $("#sentence").text(inputText);
+            $("#regex_pattern").val(pattern);
+          }
         });
 
         $("#matcher_form").submit(function (event) {
@@ -94,10 +102,10 @@
               }
             },
             error: function (response) {
-              if (response.error) {
+              if (response.status == 400) {
                 Swal.fire({
                   title: "Error!",
-                  text: response.error,
+                  text: "reCAPTCHA verification failed. Please try again.",
                   icon: "error",
                   confirmButtonText: "OK",
                   theme: "dark",
